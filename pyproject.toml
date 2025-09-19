@@ -6,7 +6,9 @@ build-backend = "setuptools.build_meta"
 name = "footysim"
 version = "0.1.0"
 description = "FootySim — SQLAlchemy 2.0 async demo"
-authors = [{name="You"}]
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "You" }]
 requires-python = ">=3.11"
 dependencies = [
   "SQLAlchemy>=2.0",
@@ -18,9 +20,29 @@ dependencies = [
   "greenlet>=3.0"
 ]
 
+# Ex: pip install .[mysql]
 [project.optional-dependencies]
 mysql = ["aiomysql>=0.2.0"]
 
+[project.urls]
+Homepage = "https://github.com/youruser/FootySim"
+Issues = "https://github.com/youruser/FootySim/issues"
+
+# Installe une commande 'footysim' (équivalent à: python -m footysim.cli)
+[project.scripts]
+footysim = "footysim.cli:app"
+
 [tool.setuptools]
-package-dir = {"" = "src"}
-packages = {find = {where = ["src"]}}
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests*"]
+
+# (Optionnel) inclure des fichiers non-Python si MANIFEST.in n’est pas utilisé
+[tool.setuptools.package-data]
+footysim = ["py.typed"]
+
+# (Optionnel) config pytest si tu en veux une intégrée
+[tool.pytest.ini_options]
+testpaths = ["tests"]
