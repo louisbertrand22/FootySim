@@ -14,6 +14,7 @@ if config.config_file_name is not None:
 config.set_main_option("sqlalchemy.url", settings.database_url)
 target_metadata = Base.metadata
 
+
 async def run_migrations_online() -> None:
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section),
@@ -22,8 +23,11 @@ async def run_migrations_online() -> None:
     )
     async with connectable.connect() as connection:
         await connection.run_sync(
-            lambda conn: context.configure(connection=conn, target_metadata=target_metadata)
+            lambda conn: context.configure(
+                connection=conn, target_metadata=target_metadata
+            )
         )
         await connection.run_sync(context.run_migrations)
+
 
 run_migrations = run_migrations_online

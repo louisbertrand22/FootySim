@@ -8,7 +8,6 @@ from .db.session import init_models, AsyncSessionLocal
 from .seeds.seed_data import seed_minimal
 from .services.schedule_service import generate_round_robin
 from .services.match_engine import simulate_match
-from .services.table_service import build_table
 from .models.fixture import Fixture
 from .models.club import Club
 from .models.match import Match
@@ -17,25 +16,35 @@ from datetime import date
 
 app = typer.Typer(help="FootySim CLI")
 
+
 @app.command()
 def initdb():
     asyncio.run(init_models())
     typer.echo("Database initialized.")
+
 
 @app.command()
 def seed():
     async def _run():
         async with AsyncSessionLocal() as session:
             await seed_minimal(session)
+
     asyncio.run(_run())
     typer.echo("Seed data inserted.")
+
 
 @app.command()
 def schedule(
     season_id: int = typer.Argument(..., help="ID de la saison"),
-    start_date_opt: str = typer.Option(None, "--start-date", help="YYYY-MM-DD (défaut: 2024-08-01)"),
-    force: bool = typer.Option(False, "--force", help="Supprime les fixtures existantes avant de regénérer"),
-    rounds: int = typer.Option(2, "--rounds", min=1, max=2, help="1 = aller, 2 = aller/retour"),
+    start_date_opt: str = typer.Option(
+        None, "--start-date", help="YYYY-MM-DD (défaut: 2024-08-01)"
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Supprime les fixtures existantes avant de regénérer"
+    ),
+    rounds: int = typer.Option(
+        2, "--rounds", min=1, max=2, help="1 = aller, 2 = aller/retour"
+    ),
 ):
     """Génère le calendrier de la saison."""
     start = date.fromisoformat(start_date_opt) if start_date_opt else date(2024, 8, 1)
@@ -52,7 +61,9 @@ def schedule(
             typer.echo(f"{count} fixtures ajoutées.")
 
     import asyncio
+
     asyncio.run(_run())
+
 
 @app.command()
 def simulate(fixture_id: int):
@@ -60,11 +71,14 @@ def simulate(fixture_id: int):
         async with AsyncSessionLocal() as session:
             match = await simulate_match(session, fixture_id)
             typer.echo(f"Result: {match.home_goals} - {match.away_goals}")
+
     asyncio.run(_run())
+
 
 @app.command()
 def table(season_id: int):
     """Affiche le classement d'une saison avec les noms des clubs."""
+
     async def _run():
         async with AsyncSessionLocal() as session:
             # 1) Dictionnaire id -> nom de club
@@ -93,10 +107,20 @@ def table(season_id: int):
                 return
 
             # 3) Cumuler les stats
-            table = {cid: {"name": club_names.get(cid, f"Club {cid}"),
-                           "P": 0, "W": 0, "D": 0, "L": 0,
-                           "GF": 0, "GA": 0, "GD": 0, "PTS": 0}
-                     for cid in club_names.keys()}
+            table = {
+                cid: {
+                    "name": club_names.get(cid, f"Club {cid}"),
+                    "P": 0,
+                    "W": 0,
+                    "D": 0,
+                    "L": 0,
+                    "GF": 0,
+                    "GA": 0,
+                    "GD": 0,
+                    "PTS": 0,
+                }
+                for cid in club_names.keys()
+            }
 
             for home_id, away_id, hg, ag in matches:
                 # home
@@ -111,14 +135,18 @@ def table(season_id: int):
                 ta["GA"] += hg
                 # résultats
                 if hg > ag:
-                    th["W"] += 1; th["PTS"] += 3
+                    th["W"] += 1
+                    th["PTS"] += 3
                     ta["L"] += 1
                 elif hg < ag:
-                    ta["W"] += 1; ta["PTS"] += 3
+                    ta["W"] += 1
+                    ta["PTS"] += 3
                     th["L"] += 1
                 else:
-                    th["D"] += 1; ta["D"] += 1
-                    th["PTS"] += 1; ta["PTS"] += 1
+                    th["D"] += 1
+                    ta["D"] += 1
+                    th["PTS"] += 1
+                    ta["PTS"] += 1
 
             for t in table.values():
                 t["GD"] = t["GF"] - t["GA"]
@@ -126,22 +154,26 @@ def table(season_id: int):
             # 4) Tri: Points, Diff, Buts marqués, Nom
             ordered = sorted(
                 table.values(),
-                key=lambda t: (-t["PTS"], -t["GD"], -t["GF"], t["name"].lower())
+                key=lambda t: (-t["PTS"], -t["GD"], -t["GF"], t["name"].lower()),
             )
 
             # 5) Affichage propre
-            header = f'{"#":>2}  {"Club":<22} {"P":>2} {"W":>2} {"D":>2} {"L":>2}  {"GF":>3} {"GA":>3} {"GD":>3}  {"PTS":>3}'
+            header = f"{'#':>2}  {'Club':<22} {'P':>2} {'W':>2} {'D':>2} {'L':>2}  {'GF':>3} {'GA':>3} {'GD':>3}  {'PTS':>3}"
             line = "-" * len(header)
             print(header)
             print(line)
             for i, t in enumerate(ordered, start=1):
-                print(f'{i:>2}  {t["name"]:<22} {t["P"]:>2} {t["W"]:>2} {t["D"]:>2} {t["L"]:>2}  {t["GF"]:>3} {t["GA"]:>3} {t["GD"]:>3}  {t["PTS"]:>3}')
+                print(
+                    f"{i:>2}  {t['name']:<22} {t['P']:>2} {t['W']:>2} {t['D']:>2} {t['L']:>2}  {t['GF']:>3} {t['GA']:>3} {t['GD']:>3}  {t['PTS']:>3}"
+                )
 
     asyncio.run(_run())
-    
+
+
 @app.command()
 def fixtures(season_id: int, round: int | None = None):
     """Affiche les matchs d'une saison (optionnellement filtrés par journée)."""
+
     async def _run():
         async with AsyncSessionLocal() as session:
             # Map club_id -> name
@@ -154,9 +186,12 @@ def fixtures(season_id: int, round: int | None = None):
             j = outerjoin(Fixture, Match, Match.fixture_id == Fixture.id)
             q = (
                 select(
-                    Fixture.round, Fixture.date,
-                    Fixture.home_club_id, Fixture.away_club_id,
-                    Match.home_goals, Match.away_goals
+                    Fixture.round,
+                    Fixture.date,
+                    Fixture.home_club_id,
+                    Fixture.away_club_id,
+                    Match.home_goals,
+                    Match.away_goals,
                 )
                 .select_from(j)
                 .where(Fixture.season_id == season_id)
@@ -184,9 +219,15 @@ def fixtures(season_id: int, round: int | None = None):
                     print(f"{d} : {home} {hg}–{ag} {away}")
 
     asyncio.run(_run())
-    
+
+
 @app.command()
-def simulate_season(season_id: int, reset: bool = typer.Option(False, "--reset", help="Supprime matchs et buts avant de resimuler")):
+def simulate_season(
+    season_id: int,
+    reset: bool = typer.Option(
+        False, "--reset", help="Supprime matchs et buts avant de resimuler"
+    ),
+):
     """(Re)simule tous les matchs d'une saison."""
     import asyncio
     from sqlalchemy import select, delete
@@ -201,22 +242,36 @@ def simulate_season(season_id: int, reset: bool = typer.Option(False, "--reset",
             if reset:
                 # Récupère tous les matchs de la saison
                 match_ids = (
-                    await session.execute(
-                        select(Match.id).join(Fixture, Match.fixture_id == Fixture.id).where(Fixture.season_id == season_id)
+                    (
+                        await session.execute(
+                            select(Match.id)
+                            .join(Fixture, Match.fixture_id == Fixture.id)
+                            .where(Fixture.season_id == season_id)
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
                 if match_ids:
                     # Supprime d'abord les buts liés, puis les matchs
-                    await session.execute(delete(Goal).where(Goal.match_id.in_(match_ids)))
+                    await session.execute(
+                        delete(Goal).where(Goal.match_id.in_(match_ids))
+                    )
                     await session.execute(delete(Match).where(Match.id.in_(match_ids)))
                     await session.commit()
 
             # (Re)charge toutes les fixtures de la saison (il n'existe plus de matchs si --reset)
             fixtures = (
-                await session.execute(
-                    select(Fixture).where(Fixture.season_id == season_id).order_by(Fixture.round, Fixture.date, Fixture.id)
+                (
+                    await session.execute(
+                        select(Fixture)
+                        .where(Fixture.season_id == season_id)
+                        .order_by(Fixture.round, Fixture.date, Fixture.id)
+                    )
                 )
-            ).scalars().all()
+                .scalars()
+                .all()
+            )
 
             if not fixtures:
                 typer.echo("Aucune fixture pour cette saison.")
@@ -225,11 +280,19 @@ def simulate_season(season_id: int, reset: bool = typer.Option(False, "--reset",
             # Si pas de reset, ne simuler que celles sans match existant
             if not reset:
                 fixtures = [
-                    f for f in fixtures
-                    if (await session.execute(select(Match.id).where(Match.fixture_id == f.id))).scalar_one_or_none() is None
+                    f
+                    for f in fixtures
+                    if (
+                        await session.execute(
+                            select(Match.id).where(Match.fixture_id == f.id)
+                        )
+                    ).scalar_one_or_none()
+                    is None
                 ]
                 if not fixtures:
-                    typer.echo("Rien à simuler (toutes les fixtures ont déjà un résultat).")
+                    typer.echo(
+                        "Rien à simuler (toutes les fixtures ont déjà un résultat)."
+                    )
                     return
 
             for f in fixtures:
@@ -238,18 +301,16 @@ def simulate_season(season_id: int, reset: bool = typer.Option(False, "--reset",
     asyncio.run(_run())
     typer.echo(f"Saison {season_id} simulée{' après reset' if reset else ''} !")
 
-    
+
 @app.command()
 def topscorers(season_id: int, limit: int = 10):
     """Top buteurs d'une saison (nécessite la table goal)."""
+
     async def _run():
         async with AsyncSessionLocal() as session:
             # Goal -> Match -> Fixture (filtre la saison) + Player pour le nom
             q = (
-                select(
-                    Player.name,
-                    func.count(Goal.id).label("goals")
-                )
+                select(Player.name, func.count(Goal.id).label("goals"))
                 .join(Goal, Goal.player_id == Player.id)
                 .join(Match, Match.id == Goal.match_id)
                 .join(Fixture, Fixture.id == Match.fixture_id)
@@ -270,24 +331,31 @@ def topscorers(season_id: int, limit: int = 10):
 
     asyncio.run(_run())
 
-@app.command()
+
+@app.command("create-season")
 def create_season(
-    year: str = typer.Argument(..., help="Nom de la saison (ex: 2024/2025)")
+    year: str = typer.Argument(..., help="Libellé de la saison, ex: 2019/2020"),
+    league_id: int = typer.Option(
+        1, "--league-id", "-l", help="ID de la ligue (par défaut 1)"
+    ),
 ):
-    """Crée une nouvelle saison et affiche son ID."""
-    from .models.season import Season
-    from .db.session import AsyncSessionLocal
+    """Crée une saison rattachée à une ligue."""
     import asyncio
+    from .db.session import AsyncSessionLocal
+    from .models.season import Season
 
     async def _run():
         async with AsyncSessionLocal() as session:
-            s = Season(year=year)
+            s = Season(year=year, league_id=league_id)
             session.add(s)
             await session.commit()
             await session.refresh(s)
-            typer.echo(f"Saison créée: id={s.id}, year={s.year}")
+            typer.echo(
+                f"Saison créée: id={s.id}, year={s.year}, league_id={s.league_id}"
+            )
 
     asyncio.run(_run())
+
 
 if __name__ == "__main__":
     app()

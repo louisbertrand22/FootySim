@@ -4,6 +4,7 @@ from sqlalchemy import select
 
 T = TypeVar("T")
 
+
 class AsyncRepository(Generic[T]):
     def __init__(self, session: AsyncSession, model: Type[T]):
         self.session = session

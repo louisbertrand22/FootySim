@@ -7,12 +7,11 @@ from ..models.match import Match
 from ..models.player import Player
 from ..models.goal import Goal  # <-- buteurs
 
+
 async def simulate_match(session: AsyncSession, fixture_id: int) -> Match:
     # Récupère le fixture
     fixture = (
-        await session.execute(
-            select(Fixture).where(Fixture.id == fixture_id)
-        )
+        await session.execute(select(Fixture).where(Fixture.id == fixture_id))
     ).scalar_one()
 
     # Crée le match et flush pour obtenir match.id
@@ -23,14 +22,16 @@ async def simulate_match(session: AsyncSession, fixture_id: int) -> Match:
     # Pré-charge les joueurs des deux clubs (ids uniquement pour tirage rapide)
     home_players = (
         await session.execute(
-            select(Player.id, Player.pace, Player.shot, Player.pass_, Player.defend)
-            .where(Player.club_id == fixture.home_club_id)
+            select(
+                Player.id, Player.pace, Player.shot, Player.pass_, Player.defend
+            ).where(Player.club_id == fixture.home_club_id)
         )
     ).all()
     away_players = (
         await session.execute(
-            select(Player.id, Player.pace, Player.shot, Player.pass_, Player.defend)
-            .where(Player.club_id == fixture.away_club_id)
+            select(
+                Player.id, Player.pace, Player.shot, Player.pass_, Player.defend
+            ).where(Player.club_id == fixture.away_club_id)
         )
     ).all()
 
@@ -38,9 +39,7 @@ async def simulate_match(session: AsyncSession, fixture_id: int) -> Match:
         """Force = moyenne des 4 attributs, moyennée sur l'effectif."""
         if not rows:
             return 50
-        per_player = [
-            (r.pace + r.shot + r.pass_ + r.defend) / 4 for r in rows
-        ]
+        per_player = [(r.pace + r.shot + r.pass_ + r.defend) / 4 for r in rows]
         return int(sum(per_player) / len(per_player))
 
     sh = team_strength(home_players)

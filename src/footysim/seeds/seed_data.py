@@ -13,12 +13,19 @@ COUNTRIES = [
 ]
 
 CLUBS = [
-    "Paris FC", "Olympique Lyonnais", "Marseille FC",
-    "Chelsea FC", "Manchester United", "Liverpool FC",
-    "Real Madrid", "FC Barcelona", "Atletico Madrid"
+    "Paris FC",
+    "Olympique Lyonnais",
+    "Marseille FC",
+    "Chelsea FC",
+    "Manchester United",
+    "Liverpool FC",
+    "Real Madrid",
+    "FC Barcelona",
+    "Atletico Madrid",
 ]
 
 POSITIONS = ["GK", "DF", "MF", "FW"]
+
 
 async def seed_minimal(session: AsyncSession) -> None:
     countries = [Country(code=c, name=n) for c, n in COUNTRIES]
@@ -34,7 +41,11 @@ async def seed_minimal(session: AsyncSession) -> None:
 
     clubs = []
     for name in CLUBS:
-        club = Club(season_id=season.id, name=name, budget=random.randint(20_000_000, 80_000_000))
+        club = Club(
+            season_id=season.id,
+            name=name,
+            budget=random.randint(20_000_000, 80_000_000),
+        )
         clubs.append(club)
     session.add_all(clubs)
     await session.flush()

@@ -1,10 +1,16 @@
 # src/footysim/models/player.py
 from __future__ import annotations
+from typing import TYPE_CHECKING
 
 from sqlalchemy import String, ForeignKey, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from ..db.base import Base
+
+if TYPE_CHECKING:
+    from .club import Club
+    from .goal import Goal
+
 
 class Player(Base):
     __tablename__ = "player"
