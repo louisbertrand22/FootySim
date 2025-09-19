@@ -1,23 +1,21 @@
-import asyncio
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+# tests/conftest.py
+import pytest_asyncio
 from src.footysim.db.base import Base
+from src.footysim.db.session import engine, AsyncSessionLocal
+# import src.footysim.models  # important : charge tous les modèles
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.get_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture()
-async def session():
-    engine = create_async_engine("sqlite+aiosqlite:///:memory:", future=True)
+# Crée/Reset le schéma une fois pour toute la session de tests
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def _setup_db():
     async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    async_session = async_sessionmaker(
-        engine, expire_on_commit=False, class_=AsyncSession
-    )
-    async with async_session() as s:
+    yield
+
+
+# Fournit une AsyncSession pour chaque test
+@pytest_asyncio.fixture
+async def session():
+    async with AsyncSessionLocal() as s:
         yield s

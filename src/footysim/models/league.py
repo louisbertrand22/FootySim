@@ -12,6 +12,7 @@ class League(Base):
     __tablename__ = "league"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
+    country: Mapped[str] = mapped_column(String(80))
 
     seasons: Mapped[list["Season"]] = relationship(
         back_populates="league", cascade="all, delete-orphan"
