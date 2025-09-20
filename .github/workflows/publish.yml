@@ -9,18 +9,24 @@ on:
     tags:
       - 'v*'
 
-# IMPORTANT: permissions au niveau racine (pour OIDC)
+# Permissions OIDC pour Trusted Publishers
 permissions:
   contents: read
   id-token: write
 
 jobs:
-  build-and-publish:
+  # =========================
+  # Publier sur TestPyPI
+  # - en workflow_dispatch
+  # - sur tags pré-release (vX.Y.Z-rcN, vX.Y.Z-aN, etc.)
+  # =========================
+  publish-testpypi:
     runs-on: ubuntu-latest
-    # Optionnel: si tu as créé un Environment nommé "testpypi" côté GitHub
-    # enlève cette ligne si tu n'utilises pas d'environment
+    # Garde l'environment "testpypi" si tu l'utilises (sinon supprime cette ligne)
     environment: testpypi
-
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-'))
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,34 +36,58 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install build backend
-        run: python -m pip install --upgrade pip build
-      
       - name: Upgrade build tooling
-        run: pip install --upgrade build twine
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade build twine
 
       - name: Clean dist
         run: rm -rf dist
 
       - name: Build sdist & wheel
         run: python -m build
-      
+
       - name: Twine check
         run: python -m twine check dist/*
 
-      # Publication sur TestPyPI (Trusted Publisher)
-      # - en workflow_dispatch
-      # - ou sur tag v* (utile pour tester)
-      - name: Publish to TestPyPI
-        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+      - name: Publish to TestPyPI (Trusted Publisher)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
 
-      # Publication sur PyPI: seulement pour les tags v* SANS suffixe pré-release
-      # (ex: v1.2.3 publie; v1.2.3-rc1 ne publie pas)
-      - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc')
-        uses: pypa/gh-action-pypi-publish@release/v1
+  # =========================
+  # Publier sur PyPI (prod)
+  # - uniquement pour tags finals vX.Y.Z
+  # =========================
+  publish-pypi:
+    runs-on: ubuntu-latest
+    # IMPORTANT: mets ici l’environment déclaré côté PyPI (souvent "pypi")
+    # ou supprime la ligne si tu n'as pas configuré d'environment dans PyPI.
+    environment: pypi
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          repository-url: https://pypi.org/legacy/
+          python-version: '3.11'
+
+      - name: Upgrade build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install --upgrade build twine
+
+      - name: Clean dist
+        run: rm -rf dist
+
+      - name: Build sdist & wheel
+        run: python -m build
+
+      - name: Twine check
+        run: python -m twine check dist/*
+
+      - name: Publish to PyPI (Trusted Publisher)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        # Ne PAS définir repository-url ici (par défaut = PyPI prod)
