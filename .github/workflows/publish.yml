@@ -1,83 +1,52 @@
+# .github/workflows/publish.yml
 name: publish
 
 on:
+  # Lancement manuel
+  workflow_dispatch:
+  # Publication automatique quand on pousse un tag v*
   push:
     tags:
-      - "v*"        # ex: v0.2.0  -> PyPI
-      - "test/v*"   # ex: test/v0.2.0 -> TestPyPI
-  workflow_dispatch:
-    inputs:
-      repository:
-        description: "Cible de publication"
-        required: true
-        default: "pypi"
-        type: choice
-        options:
-          - pypi
-          - testpypi
+      - 'v*'
+
+# IMPORTANT: permissions au niveau racine (pour OIDC)
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    # Optionnel: si tu as créé un Environment nommé "testpypi" côté GitHub
+    # enlève cette ligne si tu n'utilises pas d'environment
+    environment: testpypi
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: '3.11'
 
       - name: Install build backend
-        run: pip install build
+        run: python -m pip install --upgrade pip build
 
       - name: Build sdist & wheel
         run: python -m build
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist
-          path: dist/*
-
-  publish:
-    needs: build
-    runs-on: ubuntu-latest
-
-    # Détermine automatiquement la cible: testpypi si tag "test/v*", sinon pypi
-    env:
-      TARGET_REPO: ${{ startsWith(github.ref, 'refs/tags/test/v') && 'testpypi' || 'pypi' }}
-
-    # Si lancé à la main, l’input 'repository' prend le dessus
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
-
-      - name: Choisir la cible (dispatch > tag)
-        id: target
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "repo=${{ inputs.repository }}" >> $GITHUB_OUTPUT
-          else
-            echo "repo=${{ env.TARGET_REPO }}" >> $GITHUB_OUTPUT
-          fi
-
-      # Publication via Trusted Publishing (OIDC)
-      # TestPyPI
+      # Publication sur TestPyPI (Trusted Publisher)
+      # - en workflow_dispatch
+      # - ou sur tag v* (utile pour tester)
       - name: Publish to TestPyPI
-        if: steps.target.outputs.repo == 'testpypi'
+        if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          # Pas besoin de token si Trusted Publishing activé sur TestPyPI
-        permissions:
-          id-token: write  # requis pour OIDC
 
-      # PyPI
+      # Publication sur PyPI: seulement pour les tags v* SANS suffixe pré-release
+      # (ex: v1.2.3 publie; v1.2.3-rc1 ne publie pas)
       - name: Publish to PyPI
-        if: steps.target.outputs.repo == 'pypi'
+        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc')
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          # Pas besoin de token si Trusted Publishing activé sur PyPI
-        permissions:
-          id-token: write  # requis pour OIDC
