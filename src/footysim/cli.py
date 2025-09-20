@@ -7,7 +7,7 @@ import inspect
 from typing import Optional, Dict
 
 import typer
-from sqlalchemy import select, delete, outerjoin, func, desc
+from sqlalchemy import select, delete, outerjoin, func
 from sqlalchemy.orm import aliased
 from sqlalchemy import case
 
