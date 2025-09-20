@@ -33,27 +33,15 @@ jobs:
         run: rm -rf dist
       - name: Build sdist & wheel
         run: python -m build
-      - name: Ensure pre-release version (dev/a/b/rc)
+      - name: Get version (from wheel)
         run: |
-          VERSION=$(python - <<'PY'
-          import importlib.metadata as m, sys, pathlib
-          # essaie pyproject.toml via setuptools_scm/poetry/PEP 621 ; sinon fallback package
-          # simple heuristique : lit version depuis dist metadata
-          import os, glob, zipfile
-          whls = glob.glob("dist/*.whl")
-          if not whls: sys.exit("No wheel built")
-          namever = os.path.basename(whls[0]).split('-')[1]
-          print(namever)
-          PY
-          )
-          echo "Version: $VERSION"
-          python - <<PY
-          import re, os, sys
-          v = os.environ["VERSION"]
-          if not re.search(r'(a|b|rc|dev)\d*', v):
-              print(f"ERROR: {v} n'est pas une pré-release (attendu .devN, aN, bN ou rcN).")
-              sys.exit(1)
-          PY
+          VERSION=$(python -c "import glob,os; w=sorted(glob.glob('dist/*.whl'))[0]; print(os.path.basename(w).split('-')[1])")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Ensure pre-release version
+        run: |
+          python -c "import os,re,sys; v=os.environ['VERSION']; print('Version:', v); \
+                    sys.exit(1) if not re.search(r'(a|b|rc|dev)\d*', v) else None"
       - name: Twine check
         run: python -m twine check dist/*
       - name: Publish to TestPyPI (Trusted Publisher)
@@ -92,27 +80,15 @@ jobs:
         run: rm -rf dist
       - name: Build sdist & wheel
         run: python -m build
-      - name: Get version
-        id: getver
+      - name: Get version (from wheel)
         run: |
-          VERSION=$(python - <<'PY'
-          import os, glob
-          whl = sorted(glob.glob("dist/*.whl"))[0]
-          print(os.path.basename(whl).split('-')[1])
-          PY
-          )
-              echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          VERSION=$(python -c "import glob,os; w=sorted(glob.glob('dist/*.whl'))[0]; print(os.path.basename(w).split('-')[1])")
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
-          - name: Ensure pre-release
-            run: |
-              python - <<'PY'
-          import os, re, sys
-          v = os.environ["VERSION"]
-          print("Version:", v)
-          if not re.search(r'(a|b|rc|dev)\d*', v):
-              print(f"ERROR: {v} n'est pas une pré-release")
-              sys.exit(1)
-          PY
+      - name: Ensure stable version
+        run: |
+          python -c "import os,re,sys; v=os.environ['VERSION']; print('Version:', v); \
+                    sys.exit(1) if re.search(r'(a|b|rc|dev)\d*', v) else None"
       - name: Twine check
         run: python -m twine check dist/*
       - name: Publish to PyPI (Trusted Publisher)
