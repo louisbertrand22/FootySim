@@ -67,13 +67,10 @@ jobs:
   publish-pypi:
     runs-on: ubuntu-latest
     environment: pypi   # fais correspondre au nom configuré côté PyPI, ou supprime la ligne si aucun
-    # 1) il faut un tag v*
-    # 2) le tag NE doit PAS être une pré-release
-    # 3) le tag doit pointer sur main (garde-fou)
     if: |
       github.ref_type == 'tag' &&
       startsWith(github.ref_name, 'v') &&
-      !contains(github.ref_name, '-')     # exclut rc/a/b/dev
+      !contains(github.ref_name, '-')
     steps:
       - uses: actions/checkout@v4
         with:
