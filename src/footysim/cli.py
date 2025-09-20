@@ -7,7 +7,7 @@ import inspect
 from typing import Optional, Dict
 
 import typer
-from sqlalchemy import select, delete, outerjoin, func, desc
+from sqlalchemy import select, delete, outerjoin, func
 from sqlalchemy.orm import aliased
 from sqlalchemy import case
 
@@ -22,6 +22,8 @@ from .models.goal import Goal
 from .models.match import Match
 from .models.player import Player
 from .models.season import Season
+
+from .services.players_service import best_players as svc_best_players
 
 app = typer.Typer(help="FootySim CLI")
 
@@ -634,43 +636,18 @@ def best_players(
     ),
     limit: int = typer.Option(20, "--limit", "-n", min=1, max=200, help="Nombre de joueurs à afficher"),
 ):
-    """
-    Affiche les meilleurs joueurs par note globale (moyenne pace/shot/pass/defend).
-    """
+    """Affiche les meilleurs joueurs par note globale."""
 
     async def _run():
         async with AsyncSessionLocal() as session:
-            # Expression SQL de la note globale
-            overall_expr = (
-                (Player.pace + Player.shot + Player.pass_ + Player.defend) / 4
-            ).label("overall")
-
-            q = (
-                select(
-                    Player.id,
-                    Player.name,
-                    Player.age,
-                    Player.position,
-                    Club.name.label("club"),
-                    overall_expr,
+            try:
+                rows = await svc_best_players(
+                    session, season_id=season_id, position=position, limit=limit
                 )
-                .select_from(Player)
-                .join(Club, Club.id == Player.club_id, isouter=True)
-            )
+            except ValueError as e:
+                typer.echo(str(e))
+                return
 
-            if season_id is not None:
-                q = q.where(Club.season_id == season_id)
-
-            if position:
-                pos = position.upper().strip()
-                if pos not in {"GK", "DF", "MF", "FW"}:
-                    typer.echo("Poste invalide. Utilise GK/DF/MF/FW.")
-                    return
-                q = q.where(Player.position == pos)
-
-            q = q.order_by(desc(overall_expr), Player.name.asc()).limit(limit)
-
-            rows = (await session.execute(q)).all()
             if not rows:
                 typer.echo("Aucun joueur trouvé avec ces critères.")
                 return
@@ -684,14 +661,13 @@ def best_players(
             print("-" * len(title))
 
             header = f"{'#':>2}  {'Joueur':<22} {'Âge':>3} {'Pos':>3}  {'Club':<18} {'OVR':>3}"
-            line = "-" * len(header)
             print(header)
-            print(line)
+            print("-" * len(header))
 
-            for i, (pid, name, age, pos, club, overall) in enumerate(rows, start=1):
-                club_disp = club or "(libre)"
-                ovr = int(overall or 0)
-                print(f"{i:>2}  {name:<22} {age:>3} {pos:>3}  {club_disp:<18} {ovr:>3}")
+            for r in rows:
+                print(
+                    f"{r['rank']:>2}  {r['name']:<22} {r['age']:>3} {r['position']:>3}  {r['club']:<18} {r['overall']:>3}"
+                )
 
     asyncio.run(_run())
     
