@@ -4,12 +4,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "footysim-core"
-version = "0.1.5"
+version = "0.1.6"
 description = "FootySim Core — async SQLAlchemy models, services & CLI for football simulations"
 authors = [
   { name = "Louis BERTRAND", email = "louisbert91@gmail.com" }
 ]
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 license = { text = "MIT" }
 requires-python = ">=3.11"
 

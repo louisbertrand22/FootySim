@@ -32,12 +32,18 @@ jobs:
 
       - name: Install build backend
         run: python -m pip install --upgrade pip build
+      
+      - name: Upgrade build tooling
+        run: pip install --upgrade build twine
 
       - name: Clean dist
         run: rm -rf dist
 
       - name: Build sdist & wheel
         run: python -m build
+      
+      - name: Twine check
+        run: python -m twine check dist/*
 
       # Publication sur TestPyPI (Trusted Publisher)
       # - en workflow_dispatch
