@@ -92,7 +92,8 @@ jobs:
         run: rm -rf dist
       - name: Build sdist & wheel
         run: python -m build
-      - name: Ensure stable version (no pre-release)
+      - name: Get version
+        id: getver
         run: |
           VERSION=$(python - <<'PY'
           import os, glob
@@ -100,12 +101,16 @@ jobs:
           print(os.path.basename(whl).split('-')[1])
           PY
           )
-                    echo "Version: $VERSION"
-                    python - <<PY
-          import re, os, sys
+              echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+          - name: Ensure pre-release
+            run: |
+              python - <<'PY'
+          import os, re, sys
           v = os.environ["VERSION"]
-          if re.search(r'(a|b|rc|dev)\d*', v):
-              print(f"ERROR: {v} est une pré-release; attendu version stable.")
+          print("Version:", v)
+          if not re.search(r'(a|b|rc|dev)\d*', v):
+              print(f"ERROR: {v} n'est pas une pré-release")
               sys.exit(1)
           PY
       - name: Twine check
