@@ -20,7 +20,9 @@ jobs:
   publish-testpypi:
     runs-on: ubuntu-latest
     environment: testpypi
-    if: github.ref_type == 'branch' && github.ref_name == 'dev'
+    if: >
+      (github.ref_type == 'branch' && github.ref_name == 'dev') ||
+      (github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && contains(github.ref_name, '-'))
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -55,10 +57,7 @@ jobs:
   publish-pypi:
     runs-on: ubuntu-latest
     environment: pypi   # fais correspondre au nom configuré côté PyPI, ou supprime la ligne si aucun
-    if: |
-      github.ref_type == 'tag' &&
-      startsWith(github.ref_name, 'v') &&
-      !contains(github.ref_name, '-')
+    if: github.ref_type == 'tag' && startsWith(github.ref_name, 'v') && !contains(github.ref_name, '-')
     steps:
       - uses: actions/checkout@v4
         with:
