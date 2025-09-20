@@ -458,7 +458,7 @@ def info():
 
     typer.echo("\nAstuce : utilise `--help` après une commande pour plus de détails.")
     
-from sqlalchemy.orm import aliased
+
 
 @app.command()
 def match(match_id: int):
@@ -562,7 +562,7 @@ def player(
             q_stats = (
                 select(
                     func.count(Goal.id).label("total_goals"),
-                    func.sum(case((Goal.is_own_goal == True, 1), else_=0)).label("own_goals"),
+                    func.sum(case((Goal.is_own_goal, 1), else_=0)).label("own_goals"),
                 )
                 .join(Match, Match.id == Goal.match_id)
                 .join(Fixture, Fixture.id == Match.fixture_id)
