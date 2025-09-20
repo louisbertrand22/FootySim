@@ -7,7 +7,7 @@ name = "footysim-core"
 version = "0.1.2"
 description = "FootySim Core — async SQLAlchemy models, services & CLI for football simulations"
 authors = [
-  { name = "Le Goat", email = "ton.email@example.com" }
+  { name = "Louis BERTRAND", email = "louisbert91@gmail.com" }
 ]
 readme = "README.md"
 license = { text = "MIT" }
